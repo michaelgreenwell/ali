@@ -58,16 +58,17 @@ def dict_from_xml_string(xml_string):
     'url_doc_view': record.find('URLDocView').text,
   }
 
-zip_files = find_zip_files()
-xml_strings = read_zip_file_xml(zip_files.pop(0))
-row = dict_from_xml_string(xml_strings.pop(0))
-
-dict_array = [row]
-
-with open('output.csv', 'wb') as output_file:
+def write_dict_array_to_csv(dict_array):
+  with open('output.csv', 'wb') as output_file:
     dict_writer = csv.DictWriter(output_file, dict_array[0].keys())
     dict_writer.writeheader()
     dict_writer.writerows(dict_array)
+
+zip_files = find_zip_files()
+xml_strings = read_zip_file_xml(zip_files.pop(0))
+row = dict_from_xml_string(xml_strings.pop(0))
+write_dict_array_to_csv([row])
+
 
 
 
