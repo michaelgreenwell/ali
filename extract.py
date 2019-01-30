@@ -2,6 +2,7 @@ import os
 import re
 import xml.etree.ElementTree
 import zipfile
+import csv
 
 ROOT = "/Users/michael/ali/data"
 
@@ -30,18 +31,43 @@ def read_zip_file_xml(filepath):
 
 # This will read an XML file in with the expected format and create a Dictionary
 def dict_from_xml_string(xml_string):
-  rec = xml.etree.ElementTree.fromstring(xml_string)
-  publication = rec.find('Publication')
+  record = xml.etree.ElementTree.fromstring(xml_string)
+  publication = record.find('Publication')
+  contributor = record.find('Contributor')
   return {
-    'record_id': rec.find('RecordID').text,
-    'record_title': rec.find('RecordID').text,
+    'record_id': record.find('RecordID').text,
+    'record_title': record.find('RecordID').text,
     'publication_id': publication.find('PublicationID').text,
+    'publication_title': publication.find('Title').text,
+    'publication_qualifier': publication.find('Qualifier').text,
+    'publisher': record.find('Publisher').text,
+    'volume': record.find('Volume').text,
+    'issue': record.find('Issue').text,
+    'alpha_pub_date': record.find('AlphaPubDate').text,
+    'numeric_pub_date': record.find('NumericPubDate').text,
+    'source_type': record.find('SourceType').text,
+    'object_type': record.find('ObjectType').text,
+    'contributor_role': contributor.find('ContribRole').text,
+    'contributor_last_name': contributor.find('LastName').text,
+    'contributor_first_name': contributor.find('FirstName').text,
+    'contributor_person_name': contributor.find('PersonName').text,
+    'contributor_original_form': contributor.find('OriginalForm').text,
+    'start_page': record.find('StartPage').text,
+    'end_page': record.find('EndPage').text,
+    'pagination': record.find('Pagination').text,
+    'url_doc_view': record.find('URLDocView').text,
   }
 
 zip_files = find_zip_files()
 xml_strings = read_zip_file_xml(zip_files.pop(0))
 row = dict_from_xml_string(xml_strings.pop(0))
-print row
+
+dict_array = [row]
+
+with open('output.csv', 'wb') as output_file:
+    dict_writer = csv.DictWriter(output_file, dict_array[0].keys())
+    dict_writer.writeheader()
+    dict_writer.writerows(dict_array)
 
 
 
