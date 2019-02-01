@@ -18,7 +18,7 @@ def find_files_by_regex(root, regex):
   return zip_files
 
 # This will open those zip files and pull out the XML
-def read_zip_file_xml(filepath):
+def read_xml_zip_file(filepath):
   xml_strings = []
   zfile = zipfile.ZipFile(filepath)
   for finfo in zfile.infolist():
@@ -28,12 +28,24 @@ def read_zip_file_xml(filepath):
       xml_strings.append(content)
   return xml_strings
 
+# This will open zip files and create a dict of where PDF files are located
+def read_pdf_zip_file(filepath):
+  pdf_paths = {}
+  zfile = zipfile.ZipFile(filepath)
+  for finfo in zfile.infolist():
+    if re.compile('(.*pdf$)').match(finfo.filename):
+      pdf_paths[os.path.basename(finfo.filename)] = {
+        'zipfile_path': filepath,
+        'zipped_pdf_path': finfo.filename
+      }
+  return pdf_paths
+
 # This is used to wrap fields that may not appear in the XML
 def text_or_none(find_result):
   return None if find_result is None else find_result.text
 
 # This will read an XML file in with the expected format and create a Dictionary
-def dict_from_xml_string(xml_string):
+def dict_from_xml_string(xml_string, pdf_paths):
   record = xml.etree.ElementTree.fromstring(xml_string)
 
   publication = record.find('Publication')
@@ -76,6 +88,7 @@ def dict_from_xml_string(xml_string):
   main_dict.update(contributor_dict)
 
 
+
   def merge_product_id(product_element):
     md = copy.deepcopy(main_dict)
     md.update({'product_id': text_or_none(product_element.find('ProductID'))})
@@ -84,7 +97,18 @@ def dict_from_xml_string(xml_string):
 
   # This will pull all of the ProductIDs and write them into a copy of the row
   product_elements = record.find('Products').findall('Product')
-  return map(merge_product_id, product_elements)
+  products = map(merge_product_id, product_elements)
+
+  for product in products:
+    pdf_path = pdf_paths.get('file_name', None)
+    if pdf_path is not None:
+      product.update(pdf_path)
+    else:
+      product.update({
+        'zipfile_path': None,
+        'zipped_pdf_path': None
+      })
+  return products
 
 def write_dict_array_to_csv(dict_array):
   with open('output.csv', 'wb') as output_file:
@@ -94,17 +118,22 @@ def write_dict_array_to_csv(dict_array):
 
 
 root = sys.argv[1]
-XML_FILE_REGEX = '.*/(xml|XML)/(.*zip$)' # This regular expression identifies file paths for XML zips
+PDF_ZIP_FILE_REGEX = '.*/(PDF)/(.*zip$)' # This regular expression identifies file paths for XML zips
+XML_ZIP_FILE_REGEX = '.*/(xml|XML)/(.*zip$)' # This regular expression identifies file paths for XML zips
 
-zip_files = find_files_by_regex(root, XML_FILE_REGEX)
+pdf_zip_files = find_files_by_regex(root, PDF_ZIP_FILE_REGEX)
+pdf_paths = {}
+for zip_file in pdf_zip_files:
+  pdf_paths.update(read_pdf_zip_file(zip_file))
 
+xml_zip_files = find_files_by_regex(root, XML_ZIP_FILE_REGEX)
 xml_strings = []
-for zip_file in zip_files:
-  xml_strings = xml_strings + read_zip_file_xml(zip_file)
+for zip_file in xml_zip_files:
+  xml_strings = xml_strings + read_xml_zip_file(zip_file)
 
 rows = []
 for xml_string in xml_strings:
-  dicts = dict_from_xml_string(xml_string)
+  dicts = dict_from_xml_string(xml_string, pdf_paths)
   rows = rows + dicts
 
 write_dict_array_to_csv(rows)
