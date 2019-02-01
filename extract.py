@@ -4,6 +4,7 @@ import xml.etree.ElementTree
 import zipfile
 import csv
 import sys
+import copy
 
 # This will look for files paths under the provided root directory that match the provided regular expression recursively
 def find_files_by_regex(root, regex):
@@ -34,7 +35,15 @@ def text_or_none(find_result):
 # This will read an XML file in with the expected format and create a Dictionary
 def dict_from_xml_string(xml_string):
   record = xml.etree.ElementTree.fromstring(xml_string)
+
   publication = record.find('Publication')
+  publication_dict = {}
+  if publication is not None:
+    publication_dict = {
+      'publication_id': text_or_none(publication.find('PublicationID')),
+      'publication_title': text_or_none(publication.find('Title')),
+      'publication_qualifier': text_or_none(publication.find('Qualifier')),
+    }
 
   contributor = record.find('Contributor')
   contributor_dict = {}
@@ -47,12 +56,9 @@ def dict_from_xml_string(xml_string):
       'contributor_original_form': text_or_none(contributor.find('OriginalForm')),
     }
 
-  return_dict = {
+  main_dict = {
     'record_id': text_or_none(record.find('RecordID')),
     'record_title': text_or_none(record.find('RecordID')),
-    'publication_id': text_or_none(publication.find('PublicationID')),
-    'publication_title': text_or_none(publication.find('Title')),
-    'publication_qualifier': text_or_none(publication.find('Qualifier')),
     'publisher': text_or_none(record.find('Publisher')),
     'volume': text_or_none(record.find('Volume')),
     'issue': text_or_none(record.find('Issue')),
@@ -65,8 +71,20 @@ def dict_from_xml_string(xml_string):
     'pagination': text_or_none(record.find('Pagination')),
     'url_doc_view': text_or_none(record.find('URLDocView')),
   }
-  return_dict.update(contributor_dict)
-  return return_dict
+
+  main_dict.update(publication_dict)
+  main_dict.update(contributor_dict)
+
+
+  def merge_product_id(product_element):
+    md = copy.deepcopy(main_dict)
+    md.update({'product_id': text_or_none(product_element.find('ProductID'))})
+    md.update({'file_name': '_'.join([md['publication_id'], md['numeric_pub_date'], md['product_id']]) + '.pdf'})
+    return md
+
+  # This will pull all of the ProductIDs and write them into a copy of the row
+  product_elements = record.find('Products').findall('Product')
+  return map(merge_product_id, product_elements)
 
 def write_dict_array_to_csv(dict_array):
   with open('output.csv', 'wb') as output_file:
@@ -82,11 +100,12 @@ zip_files = find_files_by_regex(root, XML_FILE_REGEX)
 
 xml_strings = []
 for zip_file in zip_files:
-  xml_strings = xml_strings + read_zip_file_xml(zip_files.pop(0))
+  xml_strings = xml_strings + read_zip_file_xml(zip_file)
 
 rows = []
 for xml_string in xml_strings:
-  rows.append(dict_from_xml_string(xml_strings.pop(0)))
+  dicts = dict_from_xml_string(xml_string)
+  rows = rows + dicts
 
 write_dict_array_to_csv(rows)
 
