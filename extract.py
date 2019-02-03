@@ -5,6 +5,7 @@ import zipfile
 import csv
 import sys
 import copy
+import codecs
 
 # This will look for files paths under the provided root directory that match the provided regular expression recursively
 def find_files_by_regex(root, regex):
@@ -45,7 +46,7 @@ def text_or_none(find_result):
   return None if find_result is None else find_result.text
 
 # This will read an XML file in with the expected format and create a Dictionary
-def dict_from_xml_string(xml_string, pdf_paths):
+def dicts_from_xml_string(xml_string, pdf_paths):
   record = xml.etree.ElementTree.fromstring(xml_string)
 
   publication = record.find('Publication')
@@ -110,33 +111,23 @@ def dict_from_xml_string(xml_string, pdf_paths):
       })
   return products
 
-def write_dict_array_to_csv(dict_array):
-  with open('output.csv', 'wb') as output_file:
-    dict_writer = csv.DictWriter(output_file, dict_array[0].keys())
-    dict_writer.writeheader()
-    dict_writer.writerows(dict_array)
-
-
-root = sys.argv[1]
+ROOT = sys.argv[1]
 PDF_ZIP_FILE_REGEX = '.*/(PDF)/(.*zip$)' # This regular expression identifies file paths for XML zips
 XML_ZIP_FILE_REGEX = '.*/(xml|XML)/(.*zip$)' # This regular expression identifies file paths for XML zips
 
-pdf_zip_files = find_files_by_regex(root, PDF_ZIP_FILE_REGEX)
+pdf_zip_files = find_files_by_regex(ROOT, PDF_ZIP_FILE_REGEX)
 pdf_paths = {}
 for zip_file in pdf_zip_files:
   pdf_paths.update(read_pdf_zip_file(zip_file))
 
-xml_zip_files = find_files_by_regex(root, XML_ZIP_FILE_REGEX)
-xml_strings = []
-for zip_file in xml_zip_files:
-  xml_strings = xml_strings + read_xml_zip_file(zip_file)
-
-rows = []
-for xml_string in xml_strings:
-  dicts = dict_from_xml_string(xml_string, pdf_paths)
-  rows = rows + dicts
-
-write_dict_array_to_csv(rows)
+with codecs.open('output.csv', 'w', 'utf-8') as fp:
+  writer = csv.writer(fp)
+  xml_zip_files = find_files_by_regex(ROOT, XML_ZIP_FILE_REGEX)
+  for zip_file in xml_zip_files:
+    xml_strings = read_xml_zip_file(zip_file)
+    for xml_string in xml_strings:
+      for row in dicts_from_xml_string(xml_string, pdf_paths):
+        writer.writerow(row.values())
 
 
 
