@@ -43,7 +43,7 @@ def find_files_by_regex(root, regex):
   for path, _, files in os.walk(root):
     for file in files:
       filepath = path + "/" + file
-      if re.compile(regex).match(filepath):
+      if re.compile(regex, re.IGNORECASE).match(filepath):
         print filepath
         zip_files.append(filepath)
   return zip_files
@@ -136,8 +136,8 @@ def dicts_from_xml_string(xml_string, pdf_paths):
   return products
 
 ROOT = sys.argv[1]
-PDF_ZIP_FILE_REGEX = '.*/(PDF)/(.*zip$)' # This regular expression identifies file paths for XML zips
-XML_ZIP_FILE_REGEX = '.*/(xml|XML)/(.*zip$)' # This regular expression identifies file paths for XML zips
+PDF_ZIP_FILE_REGEX = '.*/(pdf)/(.*zip$)' # This regular expression identifies file paths for XML zips
+XML_ZIP_FILE_REGEX = '.*/(xml)/(.*zip$)' # This regular expression identifies file paths for XML zips
 
 pdf_zip_files = find_files_by_regex(ROOT, PDF_ZIP_FILE_REGEX)
 pdf_paths = {}
