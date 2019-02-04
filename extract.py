@@ -153,9 +153,3 @@ with codecs.open('output.csv', 'w', 'utf-8') as fp:
     for xml_string in xml_strings:
       for row in dicts_from_xml_string(xml_string, pdf_paths):
         writer.writerow([str(s or '').encode('utf-8', 'replace') for s in row.values()])
-
-
-
-
-
-
