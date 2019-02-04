@@ -152,7 +152,7 @@ with codecs.open('output.csv', 'w', 'utf-8') as fp:
     xml_strings = read_xml_zip_file(zip_file)
     for xml_string in xml_strings:
       for row in dicts_from_xml_string(xml_string, pdf_paths):
-        writer.writerow(row.values())
+        writer.writerow([str(s or '').encode('utf-8', 'replace') for s in row.values()])
 
 
 
