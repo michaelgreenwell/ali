@@ -30,7 +30,11 @@ ROW_TEMPLATE = collections.OrderedDict({
   'start_page': None,
   'end_page': None,
   'pagination': None,
-  'url_doc_view': None
+  'url_doc_view': None,
+  'product_id': None,
+  'file_name': None,
+  'zipfile_path': None,
+  'zipped_pdf_path': None
 })
 
 # This will look for files paths under the provided root directory that match the provided regular expression recursively
