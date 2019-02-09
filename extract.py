@@ -144,7 +144,12 @@ pdf_paths = {}
 for zip_file in pdf_zip_files:
   pdf_paths.update(read_pdf_zip_file(zip_file))
 
-with codecs.open('output.csv', 'w', 'utf-8') as fp:
+with codecs.open('pdfs.csv', 'w', 'utf-8') as fp:
+  writer = csv.writer(fp)
+  for key, value in pdf_paths.iteritems():
+    writer.writerow([key] + value.values())
+
+with codecs.open('metadata.csv', 'w', 'utf-8') as fp:
   writer = csv.writer(fp)
   writer.writerow(ROW_TEMPLATE.keys())
   xml_zip_files = find_files_by_regex(ROOT, XML_ZIP_FILE_REGEX)
