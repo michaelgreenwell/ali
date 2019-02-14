@@ -7,6 +7,7 @@ import sys
 import copy
 import codecs
 import collections
+import cStringIO
 
 # This is the template for each row
 ROW_TEMPLATE = collections.OrderedDict({
@@ -31,7 +32,6 @@ ROW_TEMPLATE = collections.OrderedDict({
   'end_page': None,
   'pagination': None,
   'url_doc_view': None,
-  'product_id': None,
   'file_name': None,
   'zipfile_path': None,
   'zipped_pdf_path': None
@@ -100,7 +100,7 @@ def dicts_from_xml_string(xml_string, pdf_paths):
 
   main_dict.update({
     'record_id': text_or_none(record.find('RecordID')),
-    'record_title': text_or_none(record.find('RecordID')),
+    'record_title': text_or_none(record.find('RecordTitle')),
     'publisher': text_or_none(record.find('Publisher')),
     'volume': text_or_none(record.find('Volume')),
     'issue': text_or_none(record.find('Issue')),
@@ -114,26 +114,38 @@ def dicts_from_xml_string(xml_string, pdf_paths):
     'url_doc_view': text_or_none(record.find('URLDocView')),
   })
 
-  # This is a sub function of dicts_from_xml_string that duplicates the record for each Product
-  def merge_product_id(product_element):
-    md = copy.deepcopy(main_dict)
-    md.update({'product_id': text_or_none(product_element.find('ProductID'))})
-    md.update({'file_name': '_'.join([md['publication_id'], md['numeric_pub_date'], md['product_id']]) + '.pdf'})
-    return md
+  main_dict.update(
+    {'file_name': '_'.join([main_dict['publication_id'], main_dict['numeric_pub_date'], main_dict['record_id']]) + '.pdf'}
+  )
 
-  # This will pull all of the ProductIDs and write them into a copy of the row
-  product_elements = record.find('Products').findall('Product')
-  products = map(merge_product_id, product_elements)
+  pdf_path = {
+    'zipfile_path': None,
+    'zipped_pdf_path': None
+  }
+  pdf_path.update(pdf_paths.get('file_name', {}))
+  main_dict.update(pdf_path)
 
-  for product in products:
-    pdf_path = {
-      'zipfile_path': None,
-      'zipped_pdf_path': None
-    }
-    pdf_path.update(pdf_paths.get('file_name', {}))
-    product.update(pdf_path)
+  return [main_dict]
 
-  return products
+class UnicodeWriter:
+    def __init__(self, f, dialect=csv.excel, encoding="utf-8", **kwds):
+        # Redirect output to a queue
+        self.queue = cStringIO.StringIO()
+        self.writer = csv.writer(self.queue, dialect=dialect, **kwds)
+        self.stream = f
+        self.encoder = codecs.getincrementalencoder(encoding)()
+
+    def writerow(self, row):
+        self.writer.writerow([s.encode("utf-8") for s in row])
+        # Fetch UTF-8 output from the queue ...
+        data = self.queue.getvalue()
+        data = data.decode("utf-8")
+        # ... and reencode it into the target encoding
+        data = self.encoder.encode(data)
+        # write to the target stream
+        self.stream.write(data)
+        # empty queue
+        self.queue.truncate(0)
 
 ROOT = sys.argv[1]
 PDF_ZIP_FILE_REGEX = '.*/(pdf)/(.*zip$)' # This regular expression identifies file paths for XML zips
@@ -150,11 +162,11 @@ with codecs.open('pdfs.csv', 'w', 'utf-8') as fp:
     writer.writerow([key] + value.values())
 
 with codecs.open('metadata.csv', 'w', 'utf-8') as fp:
-  writer = csv.writer(fp)
+  writer = UnicodeWriter(fp)
   writer.writerow(ROW_TEMPLATE.keys())
   xml_zip_files = find_files_by_regex(ROOT, XML_ZIP_FILE_REGEX)
   for zip_file in xml_zip_files:
     xml_strings = read_xml_zip_file(zip_file)
     for xml_string in xml_strings:
       for row in dicts_from_xml_string(xml_string, pdf_paths):
-        writer.writerow([str(s or '').encode('utf-8', 'replace') for s in row.values()])
+        writer.writerow(row.values())
