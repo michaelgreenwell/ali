@@ -128,24 +128,24 @@ def dicts_from_xml_string(xml_string, pdf_paths):
   return [main_dict]
 
 class UnicodeWriter:
-    def __init__(self, f, dialect=csv.excel, encoding="utf-8", **kwds):
-        # Redirect output to a queue
-        self.queue = cStringIO.StringIO()
-        self.writer = csv.writer(self.queue, dialect=dialect, **kwds)
-        self.stream = f
-        self.encoder = codecs.getincrementalencoder(encoding)()
+  def __init__(self, f, dialect=csv.excel, encoding="utf-8", **kwds):
+    # Redirect output to a queue
+    self.queue = cStringIO.StringIO()
+    self.writer = csv.writer(self.queue, dialect=dialect, **kwds)
+    self.stream = f
+    self.encoder = codecs.getincrementalencoder(encoding)()
 
-    def writerow(self, row):
-        self.writer.writerow([s.encode("utf-8") for s in row])
-        # Fetch UTF-8 output from the queue ...
-        data = self.queue.getvalue()
-        data = data.decode("utf-8")
-        # ... and reencode it into the target encoding
-        data = self.encoder.encode(data)
-        # write to the target stream
-        self.stream.write(data)
-        # empty queue
-        self.queue.truncate(0)
+  def writerow(self, row):
+    self.writer.writerow([s.encode("utf-8") for s in row])
+    # Fetch UTF-8 output from the queue ...
+    data = self.queue.getvalue()
+    data = data.decode("utf-8")
+    # ... and reencode it into the target encoding
+    data = self.encoder.encode(data)
+    # write to the target stream
+    self.stream.write(data)
+    # empty queue
+    self.queue.truncate(0)
 
 ROOT = sys.argv[1]
 PDF_ZIP_FILE_REGEX = '.*/(pdf)/(.*zip$)' # This regular expression identifies file paths for XML zips
@@ -169,4 +169,4 @@ with codecs.open('metadata.csv', 'w', 'utf-8') as fp:
     xml_strings = read_xml_zip_file(zip_file)
     for xml_string in xml_strings:
       for row in dicts_from_xml_string(xml_string, pdf_paths):
-        writer.writerow(row.values())
+        writer.writerow([(s or u'') for s in row.values()])
