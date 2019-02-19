@@ -1,4 +1,4 @@
-import os, re, zipfile, csv, sys, codecs, copy, collections, xml.etree.ElementTree
+import os, re, zipfile, csv, datetime, sys, codecs, copy, collections, xml.etree.ElementTree
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
@@ -139,7 +139,9 @@ with codecs.open('metadata.csv', 'w', 'utf-8') as fp:
   writer.writerow(ROW_TEMPLATE.keys())
   xml_zip_files = find_files_by_regex(ROOT, XML_ZIP_FILE_REGEX)
   for zip_file in xml_zip_files:
+    print datetime.datetime.now().strftime("%d.%b %Y %H:%M:%S") + ": Reading XML strings from: " + zip_file
     xml_strings = read_xml_zip_file(zip_file)
+    print "Converting XML strings into rows & writing them to CSVs"
     for xml_string in xml_strings:
       for row in dicts_from_xml_string(xml_string, pdf_paths):
         writer.writerow(row.values())
